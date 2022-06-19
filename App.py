@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Thu Jun  2 03:36:02 2022
 
@@ -10,28 +9,26 @@ import plotly.express as px  # pip install plotly-express
 import streamlit as st  # pip install streamlit
 #from math import ceil
 from io import BytesIO
-import pickle
-#import xlsxwriter
-#from reportlab.pdfgen import canvas
-#from reportlab.lib.pagesizes import letter
-#from reportlab.platypus import Paragraph
-#from reportlab.lib.styles import ParagraphStyle
-#from docx import Document
-#import os, sys
-#import matplotlib.pyplot as plt  # pip install matplotlib
-#import win32com.client as win32  # pip install pywin32
-#from pyxlsb import open_workbook as open_xlsb
-#from io import BytesIO
+
+
+
 
 # Path del modelo preentrenado
 MODEL_PATH = 'pickle_model.pkl'
+df = pd.read_excel( "MOI.xlsx")
+dfentidad=df["Entidad"].unique()
+dfcapacidad=df["Capacidad"].unique()
+dfsector=df["Sector"].unique()
+dfestrategia=df["estrategia"].unique()
+#df_selection =df  
+
 
 # Se recibe la imagen y el modelo, devuelve la predicción
 
 def main():
     # emojis: https://www.webfx.com/tools/emoji-cheat-sheet/
     st.set_page_config(page_title="Portal", layout="wide")
-    df = pd.read_excel( "MOI.xlsx")
+    
     
     
     # Título
@@ -40,10 +37,12 @@ def main():
     st.sidebar.header("Filtro")
     
     with st.sidebar:
+        
         TodaOfera = st.radio(
             "Ver toda la Oferta",
-            ("Activar filtros", "Ver toda la oferta","Indicadores", ),help="prueba"
+            ("Activar filtros", "Ver toda la oferta","Indicadores" )
         )
+
     if TodaOfera ==  "Ver toda la oferta":
       
        st.title("Portafolio De Oferta De Asistencia Técnica Territorial")
@@ -51,25 +50,28 @@ def main():
        df_selection = df
       # st.download_button(label ='Descargar Oferta', data =df_selection)  
        numeroofertas=len(df_selection.index)
-       texto2 = "Numero de ofertas encontradas: " + str(numeroofertas)
-       st.title(texto2)
-       df_xlsx = to_excel(df)
+       texto2 = "Total oferta: " + str(numeroofertas)
+       st.write(texto2)
+       dfdescarga= df_selection.drop(['ObjetivoSinTilde', 'conteo'],axis=1)
+       df_xlsx = to_excel(dfdescarga)
        st.download_button(label='📥 Descargar toda la oferta',
                                        data=df_xlsx ,
                                        file_name= 'Oferta.xlsx') 
        i=1
 
        for index, row in df_selection.iterrows():
-           texto0= row['Nombre']+"-  " + row['Entidad']
+           texto0= row['Nombre']+"-  " + row['NombreEntidad']
            texto1= row['Objetivo']+"  \n [Enlace oferta](" +row['PaginaWeb']+ ")"
            st.title(texto0)
            st.write(texto1)
            st.write(" ")
            i=i+1
     else :
+
+
         entidad = st.sidebar.multiselect(
             "Seleccione la Entidad:",
-            options=df["Entidad"].unique(),
+            options=dfentidad,
             #default=df["Entidad"].unique()
         )
         textofiltro=""
@@ -78,7 +80,7 @@ def main():
         
         sector = st.sidebar.multiselect(
             "Seleccione sector:",
-            options=df["Sector"].unique(),
+            options=dfsector,
             #default=df["Entidad"].unique()
         )
         
@@ -90,7 +92,7 @@ def main():
         
         capacidad = st.sidebar.multiselect(
             "Seleccione capacidad:",
-            options=df["Capacidad"].unique(),
+            options=dfcapacidad,
             #default=df["Entidad"].unique()
         )
         if len(capacidad)>0:
@@ -101,22 +103,26 @@ def main():
                 
         estrategia = st.sidebar.multiselect(
             "Seleccione estrategia:",
-            options=df["estrategia"].unique(),
+            options=dfestrategia,
             #default=df["Entidad"].unique()
         )
+        
         if len(estrategia)>0:
             if len(textofiltro)>0:
                 textofiltro=textofiltro +" & estrategia == @estrategia"
             else:
                 textofiltro="estrategia == @estrategia"
                 
-        st.title("Portafolio De Oferta De Asistencia Técnica Territorial")
-        
-        if TodaOfera ==  "Activar filtros":
-            if len(textofiltro)==0:
-                busqueda = st.text_input("Palabas claves de busqueda")
-                #if st.button("Buscar Oferta :"):
-                if st.button("Buscar Oferta :",on_click=style_button_row, kwargs={'clicked_button_ix': 4, 'n_buttons': 4}) and len(busqueda)>0:
+        if TodaOfera ==  "Activar filtros":        
+            st.title("Portafolio De Oferta De Asistencia Técnica Territorial")
+            busqueda = st.text_input("Palabas claves de busqueda")
+            a=0
+            if TodaOfera ==  "Activar filtros":
+                if len(textofiltro)>0:
+                    df_selection = df.query(textofiltro)
+                    a=1
+                if len(busqueda)>0:
+                    a=1
                     busqueda=busqueda.replace('á', 'a')
                     busqueda=busqueda.replace('é', 'e')
                     busqueda=busqueda.replace('í', 'i')
@@ -131,45 +137,34 @@ def main():
                                 filtro= filtro + "|"+palabra
                             else:
                                 filtro= palabra
-                    df_Modelo = df[df['ObjetivoSinTilde'].str.contains(filtro, na=False,case=False)]
-                    print(df_Modelo)
-                    for index, row in df_Modelo.iterrows():
-                        texto0= row['Nombre']+"-  " + row['Entidad']
+                                if len(textofiltro)>0:
+                                    df_selection = df_selection[df_selection['ObjetivoSinTilde'].str.contains(filtro, na=False,case=False)]
+                                else:
+                                    df_selection = df[df['ObjetivoSinTilde'].str.contains(filtro, na=False,case=False)]
+           
+            if a==1:
+                numeroofertas=len(df_selection.index)
+                if numeroofertas>0:
+                    texto2 = "Numero de ofertas encontradas: " + str(numeroofertas)
+                    st.write(texto2)
+                    dfdescarga= df_selection.drop(['ObjetivoSinTilde','conteo'],axis=1)
+                    df_xlsx = to_excel(dfdescarga)
+                    st.download_button(label='📥 Descargar actual resultado',data=df_xlsx ,file_name= 'Oferta.xlsx')
+                    for index, row in df_selection.iterrows():
+                        texto0= row['Nombre']+"-  " + row['NombreEntidad']
                         texto1= row['Objetivo']+"  \n [Enlace oferta](" +row['PaginaWeb']+ ")"
                         st.title(texto0)
                         st.write(texto1)
                         st.write(" ")
-                    
-                            #st.success('LA OFERTA RECOMENRADA ES: {}\n\n'.format(predicts[0]))
-            
-            if len(textofiltro)>0:
-               
-                  
-                df_selection = df.query(textofiltro)
-        
-                #st.download_button(label ='Descargar Oferta', data =df_selection)  
-                numeroofertas=len(df_selection.index)
-                texto2 = "Numero de ofertas encontradas: " + str(numeroofertas)
-                st.title(texto2)
-                df_xlsx = to_excel(df_selection)
-                st.download_button(label='📥 Descargar actual resultado',
-                                            data=df_xlsx ,
-                                            file_name= 'Oferta.xlsx')
-                i=1
-    
-                for index, row in df_selection.iterrows():
-                    texto0= row['Nombre']+"-  " + row['Entidad']
-                    texto1= row['Objetivo']+"  \n [Enlace oferta](" +row['PaginaWeb']+ ")"
-                    st.title(texto0)
-                    st.write(texto1)
-                    st.write(" ")
-                    i=i+1
+                else:
+                    st.write("No se encontro ningún resultado con la busqueda realizada") 
         else:
             if len(textofiltro)>0:
                 df_indicador = df.query(textofiltro)
             else:
                 df_indicador=df
                 
+            st.title("Indicadores Oferta De Asistencia Técnica Territorial")    
             Entidades_by_noferta = (
             df_indicador.groupby(by=["Entidad"]).sum()[["conteo"]].sort_values(by="conteo"))
             fig_entidad_cantidad = px.bar(
@@ -227,7 +222,10 @@ def main():
             template="plotly_white",
             ) 
             fig_estrategia_cantidad.update_layout( plot_bgcolor="rgba(0,0,0,0)",  xaxis=(dict(showgrid=False)) )  
-            st.plotly_chart(fig_estrategia_cantidad,use_container_width=True)       
+            st.plotly_chart(fig_estrategia_cantidad,use_container_width=True)    
+        
+
+                
             st.markdown("""---""")                    
     # ---- HIDE STREAMLIT STYLE ----
     hide_st_style = """
